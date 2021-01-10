@@ -1,0 +1,110 @@
+# This workflow will build and push a new container image to Amazon ECR,
+# and then will deploy a new task definition to Amazon ECS, when a release is created
+#
+# To use this workflow, you will need to complete the following set-up steps:
+#
+# 1. Create an ECR repository to store your images.
+#    For example: `aws ecr create-repository --repository-name my-ecr-repo --region us-east-2`.
+#    Replace the value of `ECR_REPOSITORY` in the workflow below with your repository's name.
+#    Replace the value of `aws-region` in the workflow below with your repository's region.
+#
+# 2. Create an ECS task definition, an ECS cluster, and an ECS service.
+#    For example, follow the Getting Started guide on the ECS console:
+#      https://us-east-2.console.aws.amazon.com/ecs/home?region=us-east-2#/firstRun
+#    Replace the values for `service` and `cluster` in the workflow below with your service and cluster names.
+#
+# 3. Store your ECS task definition as a JSON file in your repository.
+#    The format should follow the output of `aws ecs register-task-definition --generate-cli-skeleton`.
+#    Replace the value of `task-definition` in the workflow below with your JSON file's name.
+#    Replace the value of `container-name` in the workflow below with the name of the container
+#    in the `containerDefinitions` section of the task definition.
+#
+# 4. Store an IAM user access key in GitHub Actions secrets named `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+#    See the documentation for each action used below for the recommended IAM policies for this IAM user,
+#    and best practices on handling the access key credentials.
+
+on:
+  release:
+    types: [created]
+
+name: Deploy to Amazon ECS
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-2
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: my-ecr-repo
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build a docker container and
+        # push it to ECR so that it can
+        # be deployed to ECS.
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id: task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        container-name: sample-app
+        image: ${{ steps.build-image.outputs.image }}
+
+    - name: Deploy Amazon ECS task definition
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        service: sample-app-service
+        cluster: default
+        key: 
+        wait-for-service-stability: true
+        key:  
+        
+        -名稱：GitHub Actions的AWS CloudFormation“ Deploy CloudFormation Stack”操作
+  ＃您可以固定到確切的提交或版本。
+  ＃使用：aws-actions / aws-cloudformation-github-deploy @ dfbee8a4fec90af61b71bafda3890f8c4a2075ef
+  用途：aws-actions/aws-cloudformation-github-deploy@v1.0.3
+  與：
+    ＃CloudFormation堆棧的名稱
+    名稱： 
+    ＃CloudFormation模板的路徑或URL
+    模板： 
+    ＃要確認的堆棧模板功能的逗號分隔列表。默認為“ CAPABILITY_IAM”
+    功能：＃可選，默認為CAPABILITY_IAM
+    ＃在堆棧輸入中要覆蓋的參數。該列表以逗號分隔，每個條目的格式為<ParameterName> = <ParameterValue>。
+    參數覆蓋：＃可選
+    ＃如果CloudFormation更改集為空，請不要失敗。默認值為“ 0”（在設置為空的更改時將失敗）
+    空更改集不失敗：＃可選，默認為0
+    ＃如果堆棧創建失敗，則禁止回滾。默認值為'0'（如果堆棧創建失敗，將回滾）。此輸入僅用於堆棧創建，而不用於堆棧更新
+    disable-rollback：＃可選，默認為0
+    ＃在堆棧狀態變為CREATE_FAILED之前可以經過的時間。此輸入僅用於堆棧創建，而不用於堆棧更新
+    分鐘超時：＃個可選
+    ＃用於發布堆棧相關事件的Amazon SNS主題ARN的逗號分隔列表
+    notification-arns：＃可選
+    ＃AWS CloudFormation假定用於創建堆棧的AWS Identity and Access Management（IAM）角色的Amazon資源名稱（ARN）。AWS CloudFormation使用角色的憑證代表您進行呼叫。AWS CloudFormation始終對堆棧上的所有將來操作使用此角色。只要用戶有權在堆棧上進行操作，即使用戶無權通過它，AWS CloudFormation也會使用此角色。確保角色授予最少的特權。如果您未指定值，則AWS CloudFormation將使用以前與堆棧關聯的角色
+    角色學習：＃可選
+    ＃與該堆棧關聯的鍵值對。此輸入應為JSON格式，例如[{“ Key”：“ string”，“ Value”：“ string”}]
+    標籤：＃可選
+    ＃是否在指定的堆疊上使能終結保護。默認值為“ 0”（終止保護將被禁用）此輸入僅用於堆棧創建，而不用於堆棧更新
+    終止保護：＃可選，默認為0
